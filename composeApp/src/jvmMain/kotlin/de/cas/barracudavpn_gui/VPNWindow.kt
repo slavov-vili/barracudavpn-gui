@@ -24,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -52,12 +51,9 @@ import java.awt.Cursor
 // TODO: configuration page has 2 tabs: 1 for the GUI and 1 for the vpn itself...
 @Composable
 fun VPNWindow(
-    viewModel: VPNViewModel,
     windowState: WindowState,
     onCloseRequest: () -> Unit
 ) {
-    val vpnState by viewModel.getStateFlow().collectAsState()
-
     Window(
         title = "BarracudaVPN-GUI",
         icon = TrayIcon,
@@ -77,9 +73,7 @@ fun VPNWindow(
                 modifier = Modifier.weight(1f)
                     .fillMaxWidth(),
             ) {
-                StatusHeader(
-                    status = vpnState.status
-                )
+                StatusHeader()
             }
 
             SelectionContainer(
@@ -87,13 +81,12 @@ fun VPNWindow(
                     .fillMaxWidth(),
             ) {
                 Content(
-                    state = vpnState,
                     fieldStates = loginFieldStates
                 )
             }
 
+            val viewModel = LocalViewModel.current
             ActionButton(
-                viewModel = viewModel,
                 modifier = Modifier.weight(1f)
                     .fillMaxWidth(),
                 loginFieldStates = loginFieldStates,
@@ -104,8 +97,9 @@ fun VPNWindow(
 }
 
 @Composable
-fun StatusHeader(status: VPNStatus, modifier: Modifier = Modifier) {
-    val statusText = status.toString()
+fun StatusHeader(modifier: Modifier = Modifier) {
+    val state by LocalViewModel.current.getState()
+    val statusText = state.status.toString()
     Box(
         modifier = modifier
             .border(3.dp, Color.Gray, RoundedCornerShape(24.dp))
@@ -115,14 +109,16 @@ fun StatusHeader(status: VPNStatus, modifier: Modifier = Modifier) {
         Text(
             text = statusText,
             fontSize = 50.sp,
-            color = status.getColor(),
+            color = state.status.getColor(),
             textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-fun Content(state: VPNState, fieldStates: LoginFieldStates, modifier: Modifier = Modifier) {
+fun Content(fieldStates: LoginFieldStates, modifier: Modifier = Modifier) {
+    val state by LocalViewModel.current.getState()
+
     Column(
         modifier = modifier
             .border(3.dp, Color.Gray, RoundedCornerShape(24.dp))
@@ -203,12 +199,11 @@ fun Content(state: VPNState, fieldStates: LoginFieldStates, modifier: Modifier =
 // FIXME: Just show a loading circle while the connection is happening
 @Composable
 fun ActionButton(
-    viewModel: VPNViewModel,
     loginFieldStates: LoginFieldStates,
     modifier: Modifier = Modifier,
     onClick: (outputFlow: String) -> Unit
 ) {
-    val buttonData = viewModel.getButtonData(loginFieldStates)
+    val buttonData = LocalViewModel.current.getButtonData(loginFieldStates)
     Button(
         onClick = { onClick(buttonData.action()) },
         modifier = modifier.pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
@@ -231,8 +226,8 @@ fun VPNStatus.getColor(): Color {
 
 @Composable
 fun VPNViewModel.getButtonData(loginFieldStates: LoginFieldStates): ButtonData {
-    val status = this.getStateFlow().collectAsState().value.status
-    return when (status) {
+    val state by this.getState()
+    return when (state.status) {
         VPNStatus.CONNECTED -> ButtonData("Disconnect", Color.Black, VPNActions::stop)
         VPNStatus.RECONNECTING -> ButtonData("Disconnect", Color.Black, VPNActions::stop)
         VPNStatus.DISCONNECTED -> ButtonData("Connect", Color.Black) {

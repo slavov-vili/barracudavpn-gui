@@ -1,20 +1,22 @@
 package de.cas.barracudavpn_gui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class VPNViewModel : ViewModel() {
     private val _vpnStateFlow = MutableStateFlow(VPNState.unknown())
 
-    fun getStateFlow(): StateFlow<VPNState> {
-        return _vpnStateFlow.asStateFlow()
+    @Composable
+    fun getState(): State<VPNState> {
+        return _vpnStateFlow.collectAsState()
     }
 
     init {
