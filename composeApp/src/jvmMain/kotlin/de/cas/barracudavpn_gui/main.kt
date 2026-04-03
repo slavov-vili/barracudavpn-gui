@@ -15,7 +15,7 @@ import androidx.compose.ui.window.isTraySupported
 import androidx.compose.ui.window.rememberWindowState
 
 val LocalViewModel = staticCompositionLocalOf<VPNViewModel> {
-    error("No VpnViewModel provided! Check your Main.kt setup.")
+    error("No VPNViewModel provided! Check your main.kt setup.")
 }
 
 fun main() = application {

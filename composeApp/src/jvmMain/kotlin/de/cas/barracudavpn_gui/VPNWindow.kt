@@ -1,6 +1,7 @@
 package de.cas.barracudavpn_gui
 
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.defaultScrollbarStyle
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import java.awt.Cursor
+import kotlin.math.round
 
 // TODO: add icon somewhere which opens a configuration page
 // TODO: configuration page has 2 tabs: 1 for the GUI and 1 for the vpn itself...
@@ -88,7 +91,7 @@ fun VPNWindow(
             val viewModel = LocalViewModel.current
             ActionButton(
                 modifier = Modifier.weight(1f)
-                    .fillMaxWidth(),
+                    .fillMaxWidth(0.75f),
                 loginFieldStates = loginFieldStates,
                 onClick = viewModel::loadVPNState
             )
@@ -99,17 +102,24 @@ fun VPNWindow(
 @Composable
 fun StatusHeader(modifier: Modifier = Modifier) {
     val state by LocalViewModel.current.getState()
-    val statusText = state.status.toString()
-    Box(
+    Column(
         modifier = modifier
-            .border(3.dp, Color.Gray, RoundedCornerShape(24.dp))
-            .padding(horizontal = 5.dp, vertical = 5.dp),
-        contentAlignment = BiasAlignment(0f, -0.1f)
+            .clip(RoundedCornerShape(24.dp))
+            .background(state.status.getColor())
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = statusText,
-            fontSize = 50.sp,
-            color = state.status.getColor(),
+            text = "Status:",
+            fontSize = 28.sp,
+            color = Color.White,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = state.status.toString(),
+            fontSize = 40.sp,
+            color = Color.White,
             textAlign = TextAlign.Center
         )
     }
@@ -130,9 +140,9 @@ fun Content(fieldStates: LoginFieldStates, modifier: Modifier = Modifier) {
             val fieldModifier = Modifier
                 .fillMaxWidth(0.75f)
                 .onPreviewKeyEvent { event ->
-                    // Check if the Tab key was pressed
-                    if (event.key == Key.Tab && event.type == KeyEventType.KeyDown) {
-                        // Shift + Tab moves backward, Tab moves forward
+                    if ((event.key == Key.Tab || event.key == Key.Enter)
+                        && event.type == KeyEventType.KeyDown
+                    ) {
                         if (event.isShiftPressed) {
                             focusManager.moveFocus(FocusDirection.Previous)
                         } else {
@@ -210,17 +220,18 @@ fun ActionButton(
     ) {
         Text(
             text = buttonData.text,
-            fontSize = 40.sp,
+            color = Color.White,
+            fontSize = 36.sp,
         )
     }
 }
 
 fun VPNStatus.getColor(): Color {
     return when (this) {
-        VPNStatus.CONNECTED -> Color(0xFF0A9548)
-        VPNStatus.RECONNECTING -> Color.Blue
-        VPNStatus.DISCONNECTED -> Color.Red
-        else -> Color.Black
+        VPNStatus.CONNECTED -> Color(0xFF4CAF50)
+        VPNStatus.RECONNECTING -> Color(0xFF2196F3)
+        VPNStatus.DISCONNECTED -> Color(0xFFE53935)
+        else -> Color.DarkGray
     }
 }
 
