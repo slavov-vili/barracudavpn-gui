@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
@@ -86,6 +88,7 @@ fun VPNWindow(
                 StatusHeader()
             }
 
+            // TODO: disable fields while action is running?
             SelectionContainer(
                 modifier = Modifier.weight(2f)
                     .fillMaxWidth(),
@@ -96,11 +99,18 @@ fun VPNWindow(
             }
 
             val viewModel = LocalViewModel.current
+            var isRunning by remember { mutableStateOf(false) }
+            val curState by viewModel.getState()
+            // TODO: Add some loading indicator while the onClick is running
             ActionButton(
                 modifier = Modifier.weight(1f)
-                    .fillMaxWidth(0.75f),
+                    .fillMaxWidth(0.75f)
+                    .alpha(if (isRunning) 0.5f else 1f),
                 loginFieldStates = loginFieldStates,
+                enabled = !isRunning,
                 onClick = { outputFlow ->
+                    isRunning = true
+                    val delayMilis: Long = if (VPNStatus.DISCONNECTED == curState.status) 2000 else 750
                     viewModel.viewModelScope.launch(Dispatchers.IO) {
                         viewModel.stopPolling()
                         var output = ""
@@ -108,7 +118,12 @@ fun VPNWindow(
                             output = "$output$line\n"
                             viewModel.loadVPNState(output)
                         }
+
+                        delay(delayMilis)
                         viewModel.startPolling()
+                        isRunning = false
+                    }
+                }
             )
         }
     }
@@ -224,11 +239,17 @@ fun Content(fieldStates: LoginFieldStates, modifier: Modifier = Modifier) {
 fun ActionButton(
     loginFieldStates: LoginFieldStates,
     modifier: Modifier = Modifier,
+    enabled: Boolean,
     onClick: (outputFlow: Flow<String>) -> Unit
 ) {
     val viewModel = LocalViewModel.current
     val buttonData = viewModel.getButtonData(loginFieldStates)
     Button(
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors().copy(
+            disabledContainerColor = ButtonDefaults.buttonColors().containerColor,
+            disabledContentColor = ButtonDefaults.buttonColors().contentColor
+        ),
         modifier = modifier.pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
         onClick = {
             onClick(buttonData.action())
