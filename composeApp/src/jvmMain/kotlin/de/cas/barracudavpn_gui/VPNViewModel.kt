@@ -2,10 +2,12 @@ package de.cas.barracudavpn_gui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
@@ -14,13 +16,15 @@ import kotlinx.coroutines.launch
 class VPNViewModel : ViewModel() {
     private val _vpnStateFlow = MutableStateFlow(VPNState.unknown())
 
+    var pollJob: Job? = null
+
     @Composable
     fun getState(): State<VPNState> {
-        return _vpnStateFlow.collectAsState()
+        return _vpnStateFlow.collectAsStateWithLifecycle()
     }
 
     init {
-        pollVPNState()
+        startPolling()
     }
 
     fun loadVPNState(output: String) {
@@ -31,8 +35,16 @@ class VPNViewModel : ViewModel() {
         }
     }
 
+    fun startPolling() {
+        this.pollVPNState()
+    }
+
+    suspend fun stopPolling() {
+        this.pollJob?.cancelAndJoin()
+    }
+
     private fun pollVPNState() {
-        viewModelScope.launch(Dispatchers.IO) {
+        pollJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
                 loadVPNState(VPNActions.status())
                 delay(3000)
