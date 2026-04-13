@@ -46,7 +46,11 @@ class VPNViewModel : ViewModel() {
     private fun pollVPNState() {
         pollJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                loadVPNState(VPNActions.status())
+                var output = ""
+                VPNActions.status().collect { line ->
+                    output = "$output$line\n"
+                }
+                loadVPNState(output)
                 delay(3000)
             }
         }

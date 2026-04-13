@@ -26,8 +26,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
@@ -47,8 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import java.awt.Cursor
-import kotlin.math.round
 
 // TODO: add icon somewhere which opens a configuration page
 // TODO: configuration page has 2 tabs: 1 for the GUI and 1 for the vpn itself...
@@ -93,7 +100,15 @@ fun VPNWindow(
                 modifier = Modifier.weight(1f)
                     .fillMaxWidth(0.75f),
                 loginFieldStates = loginFieldStates,
-                onClick = viewModel::loadVPNState
+                onClick = { outputFlow ->
+                    viewModel.viewModelScope.launch(Dispatchers.IO) {
+                        viewModel.stopPolling()
+                        var output = ""
+                        outputFlow.collect { line ->
+                            output = "$output$line\n"
+                            viewModel.loadVPNState(output)
+                        }
+                        viewModel.startPolling()
             )
         }
     }
@@ -205,18 +220,19 @@ fun Content(fieldStates: LoginFieldStates, modifier: Modifier = Modifier) {
     }
 }
 
-// FIXME: Somehow deal with starting the vpn
-// FIXME: Just show a loading circle while the connection is happening
 @Composable
 fun ActionButton(
     loginFieldStates: LoginFieldStates,
     modifier: Modifier = Modifier,
-    onClick: (outputFlow: String) -> Unit
+    onClick: (outputFlow: Flow<String>) -> Unit
 ) {
-    val buttonData = LocalViewModel.current.getButtonData(loginFieldStates)
+    val viewModel = LocalViewModel.current
+    val buttonData = viewModel.getButtonData(loginFieldStates)
     Button(
-        onClick = { onClick(buttonData.action()) },
         modifier = modifier.pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
+        onClick = {
+            onClick(buttonData.action())
+        },
     ) {
         Text(
             text = buttonData.text,
@@ -249,7 +265,7 @@ fun VPNViewModel.getButtonData(loginFieldStates: LoginFieldStates): ButtonData {
             )
         }
 
-        else -> ButtonData("NOOP", Color.Black) { "" }
+        else -> ButtonData("NOOP", Color.Black) { flowOf("") }
     }
 }
 
@@ -260,7 +276,7 @@ class PasswordHidingTransformation : OutputTransformation {
     }
 }
 
-data class ButtonData(val text: String, val color: Color, val action: () -> String)
+data class ButtonData(val text: String, val color: Color, val action: () -> Flow<String>)
 
 data class LoginFieldStates(
     val username: TextFieldState,
